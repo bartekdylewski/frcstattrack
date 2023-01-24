@@ -10,8 +10,6 @@ import edu.wpi.first.util.WPIUtilJNI;
 
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Scanner;
 
 import com.opencsv.CSVWriter;
@@ -76,8 +74,8 @@ public class Main {
       // default all fields are enclosed in double quotes
       // default separator is a comma
       try (CSVWriter writer = new CSVWriter(new FileWriter("test.csv", true))) {
-        String[] header = {"siema", "elo"};
-        writer.writeNext(header, false);
+        String[] header = {"id", "left Distance in xxxxx"};
+        writer.writeNext(header, true); // wymagane true ttuu
         System.out.println("HEADER ADDED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
       }
       
