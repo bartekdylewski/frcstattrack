@@ -15,7 +15,7 @@ import java.util.Scanner;
 import com.opencsv.CSVWriter;
 
 public class Main {
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, InterruptedException {
       
       // Load libraries
       NetworkTablesJNI.Helper.setExtractOnStaticLoad(false);
@@ -24,65 +24,42 @@ public class Main {
       CameraServerJNI.Helper.setExtractOnStaticLoad(false);
       CombinedRuntimeLoader.loadLibraries(Main.class, "wpiutiljni", "wpimathjni", "ntcorejni", "cscorejnicvstatic");
 
-
-      // Init
+      // Setup NT4 Client
       NetworkTableInstance inst = NetworkTableInstance.getDefault();
-      Scanner sc = new Scanner(System.in);
-      
-      
-      // Config
-      String networktablesIP = "localhost"; // Configured below
-      int teamNumber = 5883;
-      
-      
-      // Set NT instance IP depending on connection
-      boolean ipConfigSuccesfull = false;
-      do {
-        System.out.println("Type: \n0 - for simulation \n1 - for robot\n");
-        String ipChoice = sc.nextLine();
-        
-        if(ipChoice.equals("0")) {
-          networktablesIP = "127.0.0.1";
-          ipConfigSuccesfull = true;
-        } else if(ipChoice.equals("1")) {
-          networktablesIP = "10.58.83.2";
-          ipConfigSuccesfull = true;
-        } else {
-          System.out.println("\nWrong input. Try again! \n");
-        }
-      } while (!ipConfigSuccesfull);
-      System.out.println("\nNetworkTables IP chosen");
-      
-      
-      // Init NT client
       inst.startClient4("FRC Stat Track");
-      inst.setServer(networktablesIP); // Connect to IP
-      inst.setServerTeam(teamNumber, 0); // Connect to a RoboRIO with teamNumber
-      inst.startDSClient(); // Connects to RoboRIO IP, by getting IP from driver station
-      
-      // Get tables
-      NetworkTable sd = inst.getTable("SmartDashboard");
-      NetworkTable fms = inst.getTable("FMSInfo");
-      
-      // Get values
-      DoubleSubscriber leftDistance = sd.getDoubleTopic("Left Distance in xxxxx").subscribe(0);
-      DoubleSubscriber rightDistance = sd.getDoubleTopic("Right Distance in xxxxx").subscribe(0);
-      DoubleSubscriber fmsControlData = fms.getDoubleTopic("FMSControlData").subscribe(0);
+      selectNetworkTablesIP(inst, 5883);
+      // Connects after ~100ms
 
 
+
+      new SubscribeTables(inst);
+
+      
+
+
+/*       // POBIERANIE TABELEK
+        // Get tables
+        NetworkTable sd = inst.getTable("SmartDashboard");
+        NetworkTable fms = inst.getTable("FMSInfo");
+        // Get values
+        DoubleSubscriber leftDistance = sd.getDoubleTopic("Left Distance in xxxxx").subscribe(0);
+        DoubleSubscriber rightDistance = sd.getDoubleTopic("Right Distance in xxxxx").subscribe(0);
+        DoubleSubscriber fmsControlData = fms.getDoubleTopic("FMSControlData").subscribe(0);
+
+         // MAIN LOOOOOP
       // Create writer
       // default all fields are enclosed in double quotes
       // default separator is a comma
-      try (CSVWriter writer = new CSVWriter(new FileWriter("test.csv", true))) {
-        String[] header = {"id", "left Distance in xxxxx"};
-        writer.writeNext(header, true); // wymagane true ttuu
-        System.out.println("HEADER ADDED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+      if(inst.isConnected()){
+        try (CSVWriter writer = new CSVWriter(new FileWriter("test.csv", true))) {
+          String[] header = {"id", "left Distance in xxxxx"};
+          writer.writeNext(header, true); // wymagane true ttuu
+          System.out.println("HEADER ADDED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+        }
       }
-      
-      System.out.println("1111111");;
 
       int id = 0;
-      while(true){
+      while(inst.isConnected()){
         try {
           Thread.sleep(1000);
         } catch (InterruptedException ex) {
@@ -100,8 +77,8 @@ public class Main {
         System.out.println("id: " + id);
 
         id++;
-      }
-    
+      } */
+
 /* 
       // Print loop
       while (true) {
@@ -117,6 +94,39 @@ public class Main {
  */
     }
 
+    /** Set NT4 Client IP based on chooser
+     * 
+     * @param inst NetworkTableInstance
+     * @param teamNumber
+     */
+    private static void selectNetworkTablesIP(NetworkTableInstance inst, int teamNumber) {
+      
+      boolean isInputRight = true;
+
+      try (Scanner sc = new Scanner(System.in)) {
+        do {
+
+          System.out.println("Type: \n0 - for simulation \n1 - for robot\n");
+          String ipChoice = sc.nextLine();
+          
+          if(ipChoice.equals("0")) {
+            inst.setServer("localhost"); // Connect to localhost for simulation
+
+          } else if(ipChoice.equals("1")) {
+            inst.setServerTeam(teamNumber); // Connect to NT4 with RoboRIO IP from team number ex. 10.58.83.2 for 5883
+
+          } else {
+            System.out.println("\nWrong input. Try again! \n");
+            isInputRight = false;
+            
+          }
+
+        } while (!isInputRight);
+      }
+      System.out.println("\nNetworkTables IP chosen");
+    } 
+
+
     private static void setupCsvHeader(CSVWriter writer) {
       String[] header = {"siema", "elo"};
       writer.writeNext(header, false);
@@ -129,4 +139,12 @@ public class Main {
       writer.writeNext(entry);
       System.out.println("entry updated");
     }
+
+
+
+
+
+
+
+
 }
