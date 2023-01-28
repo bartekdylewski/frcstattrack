@@ -283,3 +283,4 @@ gradle-app.setting
 
 # VS Code settings file
 .vscode/
+/logs

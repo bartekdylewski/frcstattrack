@@ -1,82 +1,119 @@
-
 import edu.wpi.first.cscore.CameraServerJNI;
 import edu.wpi.first.math.WPIMathJNI;
-import edu.wpi.first.networktables.DoubleSubscriber;
-import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.NetworkTablesJNI;
 import edu.wpi.first.util.CombinedRuntimeLoader;
 import edu.wpi.first.util.WPIUtilJNI;
 
+import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Scanner;
 
 public class Main {
-    public static void main(String[] args) throws IOException {
-      
-      // Load libraries
-      NetworkTablesJNI.Helper.setExtractOnStaticLoad(false);
-      WPIUtilJNI.Helper.setExtractOnStaticLoad(false);
-      WPIMathJNI.Helper.setExtractOnStaticLoad(false);
-      CameraServerJNI.Helper.setExtractOnStaticLoad(false);
-      CombinedRuntimeLoader.loadLibraries(Main.class, "wpiutiljni", "wpimathjni", "ntcorejni", "cscorejnicvstatic");
+  public static void main(String[] args) throws IOException{
+    
+    // Load needed libraries
+    loadLibraries();
+
+    // Setup NT4 client and wait for connection
+    NetworkTableInstance inst = NetworkTableInstance.getDefault();
+    inst.startClient4("FRC Stat Track");
+    selectNetworkTablesIP(inst, 5883);
+    waitForConnection(inst, 100);
+    new SubscribeTables(inst);
+
+    // Create new .csv file
+    File file = CustomWriter.createFile("logs");
+
+    // Add .csv header
+    String[] header = {"id", "left distance (m)", "right distance (m)", "FMS control data"};
+    CustomWriter.addLine(file, header);
+    
+    // Get and set newest NT4 values to .csv file
+    sleepFor(500);
+    int id = 0;
+    while (true) {
+      String[] ntValues = SubscribeTables.gtNtValues();   // Get new values with [0] = 0
+      ntValues[0] = String.valueOf(id);                   // Set [0] as id
+      CustomWriter.addLine(file, ntValues);               // Add line to .csv file
+      System.out.println(Arrays.toString(ntValues));      // Print values added
+      id++;
+      sleepFor(100);
+    }
+
+  }
 
 
-      // Init
-      NetworkTableInstance inst = NetworkTableInstance.getDefault();
-      Scanner sc = new Scanner(System.in);
-      
-      
-      // Config
-      String networktablesIP = "localhost"; // Configured below
-      int teamNumber = 5883;
-      
-      
-      // Set NT instance IP depending on connection
-      boolean ipConfigSuccesfull = false;
+  /** Set NT4 client IP based on chooser */
+  private static void selectNetworkTablesIP(NetworkTableInstance inst, int teamNumber) {
+    
+    boolean isInputRight = true;
+
+    try (Scanner sc = new Scanner(System.in)) {
       do {
+
         System.out.println("Type: \n0 - for simulation \n1 - for robot\n");
         String ipChoice = sc.nextLine();
         
         if(ipChoice.equals("0")) {
-          networktablesIP = "127.0.0.1";
-          ipConfigSuccesfull = true;
+          inst.setServer("localhost"); // Connect to localhost for simulation
+          System.out.println("Connecting to localhost");
+
         } else if(ipChoice.equals("1")) {
-          networktablesIP = "10.58.83.2";
-          ipConfigSuccesfull = true;
+          inst.setServerTeam(teamNumber); // Connect to NT4 with RoboRIO IP from team number ex. 10.58.83.2 for 5883
+          System.out.println("Connecting to RoboRIO");
+
         } else {
           System.out.println("\nWrong input. Try again! \n");
+          isInputRight = false;
+          
         }
-      } while (!ipConfigSuccesfull);
-      System.out.println("\nNetworkTables IP chosen");
-      
-      
-      // Init NT client
-      inst.startClient4("FRC Stat Track");
-      inst.setServer(networktablesIP); // Connect to IP
-      inst.setServerTeam(teamNumber, 0); // Connect to a RoboRIO with teamNumber
-      inst.startDSClient(); // Connects to RoboRIO IP, by getting IP from driver station
-      
-      // Get tables
-      NetworkTable sd = inst.getTable("SmartDashboard");
-      NetworkTable fms = inst.getTable("FMSInfo");
-      
-      // Get values
-      DoubleSubscriber x = sd.getDoubleTopic("Left Distance in xxxxx").subscribe(0);
-      DoubleSubscriber y = sd.getDoubleTopic("Right Distance in xxxxx").subscribe(0);
-      DoubleSubscriber z = fms.getDoubleTopic("FMSControlData").subscribe(0);
 
-
-      // Print loop
-      while (true) {
-        try {
-          Thread.sleep(100);
-        } catch (InterruptedException ex) {
-          System.out.println("interrupted");
-          return;
-        }
-        System.out.println("leftD: " + x.get() + " rightD: " + y.get() + " FMSControlData: " + z.get());
-      }
-
+      } while (!isInputRight);
     }
+
+  }
+
+
+  /** Wait for connection with NT4, checks once every <b>rate</b> <i>(in milliseconds)</i>*/
+  private static void waitForConnection(NetworkTableInstance inst, int rate) {
+
+    if(!inst.isConnected()) {
+      do {
+
+        try {
+          Thread.sleep(rate);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }  
+
+      } while (!inst.isConnected());
+    }
+
+    System.out.println("Connected");
+
+  }
+
+
+  /** Load needed libraries */
+  private static void loadLibraries() throws IOException {
+    NetworkTablesJNI.Helper.setExtractOnStaticLoad(false);
+    WPIUtilJNI.Helper.setExtractOnStaticLoad(false);
+    WPIMathJNI.Helper.setExtractOnStaticLoad(false);
+    CameraServerJNI.Helper.setExtractOnStaticLoad(false);
+    CombinedRuntimeLoader.loadLibraries(Main.class, "wpiutiljni", "wpimathjni", "ntcorejni", "cscorejnicvstatic");
+  }
+
+
+  /** Sleep thread for given time */
+  public static void sleepFor(int time) {
+    try {
+      Thread.sleep(time);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+  }
+
+
 }
