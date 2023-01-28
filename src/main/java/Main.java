@@ -1,4 +1,3 @@
-
 import edu.wpi.first.cscore.CameraServerJNI;
 import edu.wpi.first.math.WPIMathJNI;
 import edu.wpi.first.networktables.NetworkTableInstance;
@@ -11,50 +10,42 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Scanner;
 
-
 public class Main {
   public static void main(String[] args) throws IOException{
     
-    // Load libraries
-    NetworkTablesJNI.Helper.setExtractOnStaticLoad(false);
-    WPIUtilJNI.Helper.setExtractOnStaticLoad(false);
-    WPIMathJNI.Helper.setExtractOnStaticLoad(false);
-    CameraServerJNI.Helper.setExtractOnStaticLoad(false);
-    CombinedRuntimeLoader.loadLibraries(Main.class, "wpiutiljni", "wpimathjni", "ntcorejni", "cscorejnicvstatic");
+    // Load needed libraries
+    loadLibraries();
 
-    // Setup NT4 Client
+    // Setup NT4 client and wait for connection
     NetworkTableInstance inst = NetworkTableInstance.getDefault();
     inst.startClient4("FRC Stat Track");
     selectNetworkTablesIP(inst, 5883);
-    waitForConnection(inst);
+    waitForConnection(inst, 100);
+    new SubscribeTables(inst);
 
-    // Creates .csv file
+    // Create new .csv file
     File file = CustomWriter.createFile("logs");
 
-    // Adds .csv header
-    String[] header = {"id", "left Distance in m"};
+    // Add .csv header
+    String[] header = {"id", "left distance (m)", "right distance (m)", "FMS control data"};
     CustomWriter.addLine(file, header);
     
-    // Gets newest NT4 values
-    SubscribeTables st = new SubscribeTables(inst);
+    // Get and set newest NT4 values to .csv file
+    sleepFor(500);
+    int id = 0;
     while (true) {
-      String[] ntValues = SubscribeTables.gtNtValues();
-      CustomWriter.addLine(file, ntValues);
-      System.out.println(Arrays.toString(ntValues));
-      try {
-        Thread.sleep(100);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
+      String[] ntValues = SubscribeTables.gtNtValues();   // Get new values with [0] = 0
+      ntValues[0] = String.valueOf(id);                   // Set [0] as id
+      CustomWriter.addLine(file, ntValues);               // Add line to .csv file
+      System.out.println(Arrays.toString(ntValues));      // Print values added
+      id++;
+      sleepFor(100);
     }
 
   }
 
-  /** Set NT4 client IP based on chooser
-   * 
-   * @param inst NetworkTableInstance
-   * @param teamNumber
-   */
+
+  /** Set NT4 client IP based on chooser */
   private static void selectNetworkTablesIP(NetworkTableInstance inst, int teamNumber) {
     
     boolean isInputRight = true;
@@ -81,16 +72,18 @@ public class Main {
 
       } while (!isInputRight);
     }
+
   }
 
-  /** Waits for connection with NT4, checks every 25ms*/
-  private static void waitForConnection(NetworkTableInstance inst) {
+
+  /** Wait for connection with NT4, checks once every <b>rate</b> <i>(in milliseconds)</i>*/
+  private static void waitForConnection(NetworkTableInstance inst, int rate) {
 
     if(!inst.isConnected()) {
       do {
 
         try {
-          Thread.sleep(25);
+          Thread.sleep(rate);
         } catch (InterruptedException e) {
           e.printStackTrace();
         }  
@@ -103,10 +96,24 @@ public class Main {
   }
 
 
+  /** Load needed libraries */
+  private static void loadLibraries() throws IOException {
+    NetworkTablesJNI.Helper.setExtractOnStaticLoad(false);
+    WPIUtilJNI.Helper.setExtractOnStaticLoad(false);
+    WPIMathJNI.Helper.setExtractOnStaticLoad(false);
+    CameraServerJNI.Helper.setExtractOnStaticLoad(false);
+    CombinedRuntimeLoader.loadLibraries(Main.class, "wpiutiljni", "wpimathjni", "ntcorejni", "cscorejnicvstatic");
+  }
 
 
-
-
+  /** Sleep thread for given time */
+  public static void sleepFor(int time) {
+    try {
+      Thread.sleep(time);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+  }
 
 
 }
