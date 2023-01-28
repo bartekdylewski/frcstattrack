@@ -6,12 +6,14 @@ import edu.wpi.first.networktables.NetworkTablesJNI;
 import edu.wpi.first.util.CombinedRuntimeLoader;
 import edu.wpi.first.util.WPIUtilJNI;
 
+import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Scanner;
 
 
 public class Main {
-  public static void main(String[] args) throws IOException, InterruptedException {
+  public static void main(String[] args) throws IOException{
     
     // Load libraries
     NetworkTablesJNI.Helper.setExtractOnStaticLoad(false);
@@ -25,7 +27,26 @@ public class Main {
     inst.startClient4("FRC Stat Track");
     selectNetworkTablesIP(inst, 5883);
     waitForConnection(inst);
-    new SubscribeTables(inst);
+
+    // Creates .csv file
+    File file = CustomWriter.createFile("logs");
+
+    // Adds .csv header
+    String[] header = {"id", "left Distance in m"};
+    CustomWriter.addLine(file, header);
+    
+    // Gets newest NT4 values
+    SubscribeTables st = new SubscribeTables(inst);
+    while (true) {
+      String[] ntValues = SubscribeTables.gtNtValues();
+      CustomWriter.addLine(file, ntValues);
+      System.out.println(Arrays.toString(ntValues));
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
 
   }
 
@@ -63,13 +84,20 @@ public class Main {
   }
 
   /** Waits for connection with NT4, checks every 25ms*/
-  private static void waitForConnection(NetworkTableInstance inst) throws InterruptedException{
+  private static void waitForConnection(NetworkTableInstance inst) {
 
     if(!inst.isConnected()) {
       do {
-        Thread.sleep(25);  
+
+        try {
+          Thread.sleep(25);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }  
+
       } while (!inst.isConnected());
     }
+
     System.out.println("Connected");
 
   }
