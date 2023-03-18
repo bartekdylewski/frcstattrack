@@ -6,12 +6,10 @@ public class SubscribeTables {
   
   private NetworkTableInstance inst;
 
-  public static NetworkTable sd;
+  public static NetworkTable smartDashboard;
   public static NetworkTable fms;
 
-  static DoubleSubscriber leftDistance;
-  static DoubleSubscriber rightDistance;
-  static DoubleSubscriber fmsControlData;
+  static DoubleSubscriber values[] = new DoubleSubscriber[Strings.value_names.length];
 
 
   /** Subscribe to NT4 tables and values */
@@ -19,37 +17,26 @@ public class SubscribeTables {
     this.inst = inst;
 
     // Get tables
-    sd = inst.getTable("SmartDashboard");
+    smartDashboard = inst.getTable("SmartDashboard");
     fms = inst.getTable("FMSInfo");
-    // TODO to be added more...
-    //
-    //
 
-
-    // Get values
-    leftDistance = sd.getDoubleTopic("Left Distance in xxxxx").subscribe(0);
-    rightDistance = sd.getDoubleTopic("Right Distance in xxxxx").subscribe(0);
-    fmsControlData = fms.getDoubleTopic("FMSControlData").subscribe(0);
-    // TODO to be added more...
-    //
-    //
+    // Subscribe values[] to given topics
+    for (int i = 0; i < values.length; i++) {
+      values[i] = smartDashboard.getDoubleTopic(Strings.value_names[i]).subscribe(0);
+    }
 
   }
 
-
+  
   /** Get an array of newest values from NT4 */
   public static String[] gtNtValues() {
 
-    String[] ntValues = {
-      "0", // PLACEHOLDER FOR ID, so we don't need to use ArrayList
-      Double.toString(leftDistance.get()), 
-      Double.toString(rightDistance.get()),
-      Double.toString(fmsControlData.get())
-      // TODO to be added more...
-      //
-      //
-
-    };
+    String[] ntValues = new String[Strings.csvHeader.length]; // create string array with present values
+    ntValues[0] = "0"; // set first column to 0
+    for (int i = 0; i < ntValues.length-1; i++) {
+      ntValues[i+1] = Double.toString(values[i].get()); // set next columns to values subscribed from NT
+    }
+   
     return ntValues;
   }
 

@@ -21,11 +21,11 @@ public class CustomWriter {
         Calendar calendar = Calendar.getInstance();
         Date currentDate = calendar.getTime();
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy HH-mm");
-
+        
         // Create and return file
         File file = new File(directory, dateFormat.format(currentDate) +".csv");
         System.out.println("Created file \"" +dateFormat.format(currentDate) +".csv" +"\"");
-
+        
         return file;
     }
 

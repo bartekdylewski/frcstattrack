@@ -20,15 +20,14 @@ public class Main {
     NetworkTableInstance inst = NetworkTableInstance.getDefault();
     inst.startClient4("FRC Stat Track");
     selectNetworkTablesIP(inst, 5883);
-    waitForConnection(inst, 100);
+    waitForConnection(inst, 200);
     new SubscribeTables(inst);
 
     // Create new .csv file
     File file = CustomWriter.createFile("logs");
 
     // Add .csv header
-    String[] header = {"id", "left distance (m)", "right distance (m)", "FMS control data"};
-    CustomWriter.addLine(file, header);
+    CustomWriter.addLine(file, Strings.csvHeader);
     
     // Get and set newest NT4 values to .csv file
     sleepFor(500);
@@ -50,31 +49,37 @@ public class Main {
     
     boolean isInputRight = true;
 
-    try (Scanner sc = new Scanner(System.in)) {
+    try (Scanner scanner = new Scanner(System.in)) {
       do {
 
-        System.out.println("Type: \n0 - for simulation \n1 - for robot\n");
-        String ipChoice = sc.nextLine();
+        System.out.println("Type: \n0 - for simulation \n1 - for robot \n2 - for driverstation IP\n");
+        String ipChoice = scanner.nextLine();
         
         if(ipChoice.equals("0")) {
           inst.setServer("localhost"); // Connect to localhost for simulation
           System.out.println("Connecting to localhost");
+          isInputRight = true;
 
         } else if(ipChoice.equals("1")) {
           inst.setServerTeam(teamNumber); // Connect to NT4 with RoboRIO IP from team number ex. 10.58.83.2 for 5883
           System.out.println("Connecting to RoboRIO");
+          isInputRight = true;
+
+        } else if(ipChoice.equals("2")) {
+          inst.startDSClient();
+          System.out.println("Connecting with driverstation IP");
+          isInputRight = true;
 
         } else {
           System.out.println("\nWrong input. Try again! \n");
+          System.out.println("isinputright:" +isInputRight);
           isInputRight = false;
-          
         }
 
       } while (!isInputRight);
     }
 
   }
-
 
   /** Wait for connection with NT4, checks once every <b>rate</b> <i>(in milliseconds)</i>*/
   private static void waitForConnection(NetworkTableInstance inst, int rate) {
@@ -86,16 +91,26 @@ public class Main {
           Thread.sleep(rate);
         } catch (InterruptedException e) {
           e.printStackTrace();
-        }  
+        }
+        System.out.println("Trying to connect");
 
       } while (!inst.isConnected());
+
     }
-
     System.out.println("Connected");
-
   }
+  
 
 
+  /** Sleep thread for given <b>time</b> <i>(in milliseconds)</i> */
+  public static void sleepFor(int time) {
+    try {
+      Thread.sleep(time);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+  }
+  
   /** Load needed libraries */
   private static void loadLibraries() throws IOException {
     NetworkTablesJNI.Helper.setExtractOnStaticLoad(false);
@@ -104,16 +119,6 @@ public class Main {
     CameraServerJNI.Helper.setExtractOnStaticLoad(false);
     CombinedRuntimeLoader.loadLibraries(Main.class, "wpiutiljni", "wpimathjni", "ntcorejni", "cscorejnicvstatic");
   }
-
-
-  /** Sleep thread for given time */
-  public static void sleepFor(int time) {
-    try {
-      Thread.sleep(time);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-  }
-
+  
 
 }
